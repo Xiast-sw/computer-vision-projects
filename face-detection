@@ -1,0 +1,37 @@
+import cv2
+
+# Load the Haar cascade classifier for face detection
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+# Start the camera
+cap = cv2.VideoCapture(0)
+
+while True:
+    # Capture a frame from the camera
+    ret, frame = cap.read()
+
+    if not ret:
+        print("Frame could not be captured. Exiting...")
+        break
+
+    # Convert the image to grayscale
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # Detect faces in the image
+    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+
+    # Draw rectangles around the detected faces
+    for (x, y, w, h) in faces:
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
+    # Display the image with face rectangles
+    cv2.imshow('Face Recognition', frame)
+
+    # Press 'q' to exit
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        print("Closing the camera...")
+        break
+
+# Release the resources
+cap.release()
+cv2.destroyAllWindows()
