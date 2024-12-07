@@ -1,0 +1,24 @@
+import cv2
+
+# Kamerayı başlat
+cap = cv2.VideoCapture(0)
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        print("Kameradan görüntü alınamadı.")
+        break
+
+    # Görüntüyü gri tonlamaya çevir
+    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # Orijinal ve gri görüntüyü göster
+    cv2.imshow('Orijinal', frame)
+    cv2.imshow('Siyah-Beyaz', gray_frame)
+
+    # 'q' tuşuna basarak çık
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
