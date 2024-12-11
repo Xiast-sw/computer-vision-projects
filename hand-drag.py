@@ -1,75 +1,60 @@
 import cv2
 import numpy as np
-from cvzone.HandTrackingModule import HandDetector
+from cvzone.HandTrackingModule import  HandDetector
 import cvzone
+import numpy as np
 
-cap = cv2.VideoCapture(0)  # Kamera başlatma
-cap.set(3, 1280)  # Genişlik ayarı
-cap.set(4, 720)   # Yükseklik ayarı
-detector = HandDetector(detectionCon=0.8)  # El algılama ayarı
-colorR = (255, 0, 255)  # Renk ayarı
+cap=cv2.VideoCapture(0)
+cap.set(3,1280)
+cap.set(4,720)
+detector=HandDetector(detectionCon=0.8)
+colorR=(255,0,255)
 
-# Sürüklenebilir dikdörtgen sınıfı
+cx,cy,w,h=100, 100, 200, 200
+
 class DragRect():
-    def __init__(self, posCenter, size=[200, 200]):
-        self.posCenter = posCenter
-        self.size = size
+    def __init__(self,posCenter, size=[200,200]):
+        self.posCenter=posCenter
+        self.size= size
 
-    def update(self, cursor):
-        cx, cy = self.posCenter
-        w, h = self.size
-        # Dikdörtgeni sürüklemek için koşul
-        if cx - w // 2 < cursor[0] < cx + w // 2 and cy - h // 2 < cursor[1] < cy + h // 2:
-            self.posCenter = cursor
+    def update(self,cursor):
+        cx,cy=self.posCenter
+        w,h=self.size
 
-rectList = []
-# 5 adet sürüklenebilir dikdörtgen oluşturma
+        if cx-w//2<cursor[0]<cx+w//2 and cy-h//2<cursor[1]<cy+h//2 :
+            self.posCenter=cursor
+            
+rectList=[]
 for x in range(5):
-    rectList.append(DragRect([x * 250 + 150, 150]))
+    rectList.append(DragRect([x*250+150,150]))
 
 while True:
-    success, img = cap.read()  # Kamera görüntüsünü al
-    if not success:
-        print("Kamera açılmadı!")
-        break  # Kameraya bağlanılamazsa döngüden çık
+    success, img=cap.read()
+    img=cv2.flip(img,1)
+    img = detector.findHands(img)
+    lmList, _ = detector.findPosition(img)
 
-    img = cv2.flip(img, 1)  # Görüntüyü yatayda çevir
-    hands, img = detector.findHands(img)  # El algılama
+    if lmList:
 
-    if hands:  # El algılandığında
-        lmList = hands[0]['lmList']  # Parmak noktalarını al
-        x1, y1, z1 = lmList[8]  # Baş parmak
-        x2, y2, z2 = lmList[12]  # İşaret parmağı
-
-        # İki parmak arasındaki mesafeyi ölçme
-        l, _, _ = detector.findDistance([x1, y1], [x2, y2], img)
-        print(f"Mesafe: {l}")
-
-        # Mesafe 40'a kadar hassasiyet düşer
-        if l < 40:
-            cursor = [x2, y2]  # İşaret parmağının koordinatları
+        l, _, _ = detector.findDistance(8,12,img)
+        print(l)
+        if l<30:
+            cursor = lmList[8]
             for rect in rectList:
-                rect.update(cursor)  # Dikdörtgenleri güncelle
+                rect.update(cursor)
 
-    imgNew = np.zeros_like(img, np.uint8)  # Yeni bir görüntü oluştur
+    imgNew=np.zeros_like(img, np.uint8)
     for rect in rectList:
         cx, cy = rect.posCenter
         w, h = rect.size
-        # Dikdörtgeni çizme
-        cv2.rectangle(imgNew, (cx - w // 2, cy - h // 2),
-                      (cx + w // 2, cy + h // 2), colorR, cv2.FILLED)
-        cvzone.cornerRect(imgNew, (cx - w // 2, cy - h // 2, w, h), 20, rt=0)
+        cv2.rectangle(imgNew,(cx-w//2,cy-h//2),
+                  (cx+w//2,cy+h//2),colorR,cv2.FILLED)
+        cvzone.cornerRect(imgNew,(cx-w//2,cy-h//2,w,h),20,rt=0)
 
-    out = img.copy()  # Orijinal görüntüyü kopyala
-    alpha = 0.1
-    mask = imgNew.astype(bool)
-    out[mask] = cv2.addWeighted(img, alpha, imgNew, 1 - alpha, 0)[mask]  # Maskeyi uygula
+    out=img.copy()
+    alpha=0.1
+    mask=imgNew.astype(bool)
+    out[mask]=cv2.addWeighted(img,alpha,imgNew,1-alpha,0)[mask]
 
-    cv2.imshow("Image", out)  # Görüntüyü göster
-
-    # "q" tuşuna basarak çıkış yapabilirsiniz
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+    cv2.imshow("Image",out)
+    cv2.waitKey(1)
