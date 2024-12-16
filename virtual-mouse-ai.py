@@ -24,16 +24,13 @@ frame_width, frame_height = int(cap.get(3)), int(cap.get(4))
 
 # Tıklama için mesafe eşiği
 click_threshold = 50  # Başparmak ve işaret parmağı arasındaki mesafe eşik değeri
-double_click_threshold = 0.3  # Çift tıklama için zaman eşiği (saniye)
 
 # Fare tıklama durumu
 last_click_time = 0
-last_double_click_time = 0
 clicking = False
-double_clicking = False
 
 # İmleç hareketi için minimum mesafe (titreşimi engellemek için)
-min_move_distance = 20  # Hareketin yapılabilmesi için minimum mesafe
+min_move_distance = 1  # Hareketin yapılabilmesi için minimum mesafe (daha hassas hareket)
 
 # Hareket geçmişi
 last_position = (0, 0)
@@ -49,8 +46,10 @@ while cap.isOpened():
     if not ret:
         break
 
+    # Kamera ters çevrilmeden önceki görüntü
+    frame = cv2.flip(frame, 1)  # Kamerayı yansıtma işlemi
+
     # Çerçeveyi yansıtma ve BGR'den RGB'ye dönüştürme
-    frame = cv2.flip(frame, 1)
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
     # El tespiti
@@ -58,13 +57,13 @@ while cap.isOpened():
 
     if result.multi_hand_landmarks:
         for hand_landmarks in result.multi_hand_landmarks:
-            # İşaret parmağı ve orta parmak noktaları
+            # İşaret parmağı ve baş parmak noktaları
             index_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-            middle_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
+            thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
 
             # Parmakların kamera koordinatları
             x1, y1 = int(index_finger_tip.x * frame_width), int(index_finger_tip.y * frame_height)
-            x2, y2 = int(middle_finger_tip.x * frame_width), int(middle_finger_tip.y * frame_height)
+            x3, y3 = int(thumb_tip.x * frame_width), int(thumb_tip.y * frame_height)
 
             # Kamera koordinatlarını ekran koordinatlarına ölçeklendirme
             screen_x = int(np.interp(x1, [0, frame_width], [0, screen_width]))
@@ -76,11 +75,8 @@ while cap.isOpened():
                 mouse.position = (screen_x, screen_y)  # Fareyi hareket ettir
                 last_position = (screen_x, screen_y)  # Yeni pozisyonu kaydet
 
-            # İşaret parmağı ve orta parmak arasındaki mesafeyi hesapla
-            distance = calculate_distance(index_finger_tip, middle_finger_tip)
-
-            # Mesafeyi ekran üzerinde yazdırarak izleme
-            cv2.putText(frame, f'Distance: {int(distance)}', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            # Başparmak ile işaret parmağı arasındaki mesafeyi hesapla
+            distance = calculate_distance(index_finger_tip, thumb_tip)
 
             # Eğer mesafe eşik değerinin altına düşerse tıklama işlemi yap
             if distance < click_threshold and (time.time() - last_click_time) > 1:  # 1 saniye bekle
@@ -88,18 +84,9 @@ while cap.isOpened():
                 last_click_time = time.time()  # Tıklama zamanı güncelleniyor
                 clicking = True
 
-            # Çift tıklama kontrolü
-            if distance < click_threshold and (time.time() - last_double_click_time) < double_click_threshold:
-                mouse.click(Button.left)
-                last_double_click_time = 0  # Çift tıklama yapıldı, zaman sıfırlanır
-                double_clicking = True
-            elif distance >= click_threshold:
-                clicking = False
-                double_clicking = False
-
-            # Parmakları çizme (işaret parmağı ve orta parmak)
+            # Parmakları çizme (işaret parmağı ve baş parmak)
             cv2.circle(frame, (x1, y1), 10, (0, 255, 0), -1)
-            cv2.circle(frame, (x2, y2), 10, (0, 0, 255), -1)
+            cv2.circle(frame, (x3, y3), 10, (255, 0, 0), -1)
 
             # El çizimi
             mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
